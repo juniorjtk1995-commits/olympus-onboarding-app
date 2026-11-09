@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e1e1e">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Olympus">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Onboarding Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  /* Layout concept: a full-viewport web app. Header (progress, back, button case), a scrollable stage, and a pinned bottom bar.
+     Narrow: one centered column. Wide: art left, copy right. Tokens mirror the Olympus dark theme. */
+  :root {
+    --canvas: #0f0f0f; --layer1: #252525; --layer2: #2e2e2e;
+    --border: #4a4a4a; --text: #f9f9f9; --text2: #d1d1d1; --muted: #6e6e6e;
+    --brand: #cb333b; --brand-sub: #320906; --brand-border: #4a0d10; --brand-text: #fff1f2;
+    --neutral: #525252; --disabled-bg: #262626; --overlay: rgba(15, 15, 15, 0.4);
+    --gutter-l: max(16px, env(safe-area-inset-left, 0px)); --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+    --font: "IBM Plex Sans Thai", "Noto Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: dark;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--canvas); color: var(--text); font-family: var(--font); font-size: 16px; line-height: 1.5; overflow-x: hidden; }
+
+  .app { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+
+  /* header */
+  .appbar { flex: none; padding: 8px var(--gutter-r) 8px var(--gutter-l); }
+  .appbar-in { max-width: 1040px; margin: 0 auto; min-height: 44px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+  .appbar-in > :first-child { justify-self: start; }
+  .appbar-in > :last-child { justify-self: end; }
+  .dots { display: flex; gap: 6px; align-items: center; }
+  .dot { width: 8px; height: 8px; border-radius: 4px; background: var(--neutral); transition: width .25s ease, background-color .25s ease; }
+  .dot.on { width: 24px; background: var(--brand); }
+  .cases { display: inline-flex; padding: 3px; gap: 2px; background: var(--layer1); border: 1px solid var(--border); border-radius: 999px; }
+  .case { font: 600 13px/18px var(--font); color: var(--text2); background: transparent; border: 0; border-radius: 999px; padding: 5px 12px; cursor: pointer; white-space: nowrap; }
+  .case[aria-pressed="true"] { background: var(--brand); color: var(--text); }
+
+  /* stage: each screen scrolls on its own */
+  .track { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+  .screen { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 0 var(--gutter-r) 0 var(--gutter-l); transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s ease; }
+  .screen[data-state="after"] { transform: translateX(8%); opacity: 0; pointer-events: none; visibility: hidden; }
+  .screen[data-state="before"] { transform: translateX(-8%); opacity: 0; pointer-events: none; visibility: hidden; }
+  .screen:focus { outline: none; }
+  .inner { max-width: 1040px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding-block: 24px; text-align: center; }
+
+  .art { container-type: size; flex: none; width: clamp(150px, min(62vw, 38vh), 320px); aspect-ratio: 1; border-radius: 10%; background: var(--layer1); display: grid; place-items: center; }
+  .ring { width: 67%; aspect-ratio: 1; border-radius: 50%; background: var(--brand-sub); display: grid; place-items: center; }
+  .core { width: 56%; aspect-ratio: 1; border-radius: 50%; background: var(--brand); display: grid; place-items: center; font-size: 44px; font-size: 15cqw; font-weight: 600; line-height: 1; }
+  .copy { width: 100%; max-width: 520px; }
+  h1 { margin: 0 0 8px; font-size: clamp(24px, 1.2vw + 20px, 36px); line-height: 1.3; font-weight: 600; text-wrap: balance; }
+  .desc { margin: 0; color: var(--text2); font-size: 16px; line-height: 22px; text-wrap: balance; }
+
+  .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px; }
+  .chip { font: inherit; font-size: 14px; line-height: 20px; font-weight: 600; color: var(--text); background: var(--layer1); border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px; cursor: pointer; transition: background-color .15s ease, border-color .15s ease; }
+  .chip[aria-pressed="true"] { background: var(--brand-sub); border-color: var(--brand); color: var(--brand-text); }
+  .chip:active { background: var(--layer2); }
+  .hint { margin: 14px 0 0; font-size: 14px; color: var(--text2); min-height: 20px; }
+  .picks { margin-top: 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .pick { font-size: 14px; font-weight: 600; background: var(--brand-sub); border: 1px solid var(--brand-border); color: var(--brand-text); border-radius: 999px; padding: 4px 12px; }
+  .install-row { margin-top: 20px; display: flex; justify-content: center; }
+
+  /* bottom bar */
+  .bottom { flex: none; padding: 16px var(--gutter-r) 24px var(--gutter-l); background: var(--canvas); border-top: 1px solid var(--layer1); }
+  .bottom-in { max-width: 480px; margin: 0 auto; display: flex; gap: 12px; }
+
+  /* Olympus Button (primary / outlined / text) */
+  .olympus-button { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 48px; padding: 8px 24px; border: 1px solid transparent; border-radius: 8px; background-color: var(--brand); background-image: linear-gradient(transparent, transparent); color: var(--text); font: 600 18px/26px var(--font); letter-spacing: .01em; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .12s ease, color .12s ease; }
+  .olympus-button:active:not(:disabled) { background-image: linear-gradient(var(--overlay), var(--overlay)); }
+  .olympus-button:disabled { background-color: var(--disabled-bg); color: var(--muted); cursor: not-allowed; }
+  .olympus-button:focus-visible, .chip:focus-visible, .case:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .back { width: auto; height: 36px; min-width: 0; padding: 4px 12px; background: transparent; border-color: transparent; font-size: 14px; line-height: 20px; color: var(--text); }
+  .back:active:not(:disabled) { color: #9b9b9b; background-image: none; }
+  .back[hidden], #prev[hidden], #install[hidden] { display: none; }
+  .olympus-button--outlined { background-color: transparent; border-color: #fff; color: var(--text); }
+  .olympus-button--outlined:active:not(:disabled) { background-image: linear-gradient(var(--overlay), var(--overlay)); }
+  .olympus-button--outlined:disabled { background-color: transparent; border-color: #404040; color: var(--muted); }
+  .olympus-button--md { width: auto; height: 36px; padding: 4px 16px; font-size: 14px; line-height: 20px; }
+  .bottom.two .olympus-button { flex: 1 1 0; width: auto; min-width: 0; }
+
+  .toast { position: fixed; left: 50%; bottom: calc(112px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 12px); max-width: calc(100% - 32px); background: var(--layer2); border: 1px solid var(--border); padding: 10px 18px; border-radius: 999px; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* wide: art left, copy right */
+  @media (min-width: 860px) and (min-height: 520px) {
+    .inner { flex-direction: row; justify-content: center; gap: 72px; text-align: left; }
+    .art { width: clamp(280px, 34vw, 400px); }
+    .copy { flex: 1 1 0; min-width: 0; }
+    .chips, .picks, .install-row { justify-content: flex-start; }
+  }
+  /* short landscape phones: compact so more fits before scrolling */
+  @media (max-height: 520px) {
+    .inner { padding-block: 12px; gap: 12px; flex-direction: row; text-align: left; }
+    .art { width: clamp(110px, 40vh, 200px); }
+    .copy { flex: 1 1 0; min-width: 0; }
+    .chips, .picks, .install-row { justify-content: flex-start; }
+    .bottom { padding-block: 10px 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .screen, .dot, .toast, .olympus-button, .chip { transition: none; } }
+html { box-sizing: border-box; padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); }
+</style>
+</head>
+<body>
+
+
+<div class="app">
+  <header class="appbar">
+    <div class="appbar-in">
+      <button class="olympus-button back" id="back" type="button" hidden>‹ ย้อนกลับ</button>
+      <div class="dots" id="dots" aria-hidden="true"><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
+      <div class="cases" role="group" aria-label="รูปแบบปุ่มล่างจอ">
+        <button class="case" type="button" data-case="one" aria-pressed="true">1 ปุ่ม</button>
+        <button class="case" type="button" data-case="two" aria-pressed="false">2 ปุ่ม</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="track" id="track">
+    <section class="screen" data-state="current" tabindex="-1" aria-labelledby="t1">
+      <div class="inner">
+        <div class="art" aria-hidden="true"><div class="ring"><div class="core">1</div></div></div>
+        <div class="copy">
+          <h1 id="t1">ยินดีต้อนรับ</h1>
+          <p class="desc">เริ่มใช้งานแอปได้ง่ายๆ ใน 3 ขั้นตอน</p>
+          <div class="install-row"><button class="olympus-button olympus-button--outlined olympus-button--md" id="install" type="button" hidden>ติดตั้งแอป</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" data-state="after" tabindex="-1" aria-labelledby="t2" aria-hidden="true">
+      <div class="inner">
+        <div class="art" aria-hidden="true"><div class="ring"><div class="core">2</div></div></div>
+        <div class="copy">
+          <h1 id="t2">เลือกสิ่งที่ชอบ</h1>
+          <p class="desc">บอกเราว่าสนใจอะไร เราจะช่วยจัดหน้าให้เหมาะกับคุณ</p>
+          <div class="chips" id="chips" role="group" aria-label="หัวข้อที่สนใจ"></div>
+          <p class="hint" id="hint" aria-live="polite">เลือกอย่างน้อย 1 อย่างเพื่อไปต่อ</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" data-state="after" tabindex="-1" aria-labelledby="t3" aria-hidden="true">
+      <div class="inner">
+        <div class="art" aria-hidden="true"><div class="ring"><div class="core">3</div></div></div>
+        <div class="copy">
+          <h1 id="t3">พร้อมแล้ว!</h1>
+          <p class="desc">ทุกอย่างเรียบร้อย เริ่มต้นใช้งานได้เลย</p>
+          <div class="picks" id="picks"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bottom" id="bottom">
+    <div class="bottom-in">
+      <button class="olympus-button olympus-button--outlined" id="prev" type="button" hidden>ย้อนกลับ</button>
+      <button class="olympus-button" id="next" type="button">ถัดไป</button>
+    </div>
+  </footer>
+  <div class="toast" id="toast" role="status">ยินดีต้อนรับสู่แอป!</div>
+</div>
+
+<script>
+(function () {
+  var TOPICS = ['ข่าว', 'กีฬา', 'เพลง', 'ท่องเที่ยว', 'อาหาร', 'เทคโนโลยี', 'ภาพยนตร์', 'สุขภาพ', 'การเงิน', 'แฟชั่น', 'เกม', 'การศึกษา'];
+  var screens = Array.prototype.slice.call(document.querySelectorAll('.screen'));
+  var dots = Array.prototype.slice.call(document.querySelectorAll('.dot'));
+  var next = document.getElementById('next'), prev = document.getElementById('prev'), back = document.getElementById('back');
+  var bottom = document.getElementById('bottom'), chipsEl = document.getElementById('chips'), hint = document.getElementById('hint');
+  var picksEl = document.getElementById('picks'), toast = document.getElementById('toast'), installBtn = document.getElementById('install');
+  var caseBtns = Array.prototype.slice.call(document.querySelectorAll('.case'));
+  var step = 0, picks = [], toastTimer = null, mode = 'one', deferredPrompt = null;
+
+  TOPICS.forEach(function (t) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.textContent = t; b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', function () {
+      var i = picks.indexOf(t);
+      if (i === -1) picks.push(t); else picks.splice(i, 1);
+      b.setAttribute('aria-pressed', i === -1 ? 'true' : 'false');
+      render();
+    });
+    chipsEl.appendChild(b);
+  });
+  caseBtns.forEach(function (b) { b.addEventListener('click', function () { mode = b.getAttribute('data-case'); render(); }); });
+
+  function canGo() { return step !== 1 || picks.length > 0; }
+
+  function render() {
+    screens.forEach(function (s, i) {
+      s.setAttribute('data-state', i === step ? 'current' : i < step ? 'before' : 'after');
+      s.setAttribute('aria-hidden', i === step ? 'false' : 'true');
+    });
+    dots.forEach(function (d, i) { d.classList.toggle('on', i === step); });
+    var two = mode === 'two';
+    bottom.classList.toggle('two', two);
+    prev.hidden = !two; prev.disabled = step === 0;
+    back.hidden = step === 0 || two;
+    caseBtns.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-case') === mode)); });
+    next.textContent = step === screens.length - 1 ? 'เริ่มต้นใช้งาน' : 'ถัดไป';
+    next.disabled = !canGo();
+    hint.textContent = picks.length ? 'เลือกแล้ว ' + picks.length + ' อย่าง' : 'เลือกอย่างน้อย 1 อย่างเพื่อไปต่อ';
+    picksEl.textContent = '';
+    picks.forEach(function (p) { var s = document.createElement('span'); s.className = 'pick'; s.textContent = p; picksEl.appendChild(s); });
+  }
+
+  function show(n) {
+    step = Math.max(0, Math.min(screens.length - 1, n));
+    if (step > 1 && picks.length === 0) step = 1;
+    render();
+    var cur = screens[step]; cur.scrollTop = 0;
+    if (cur.focus) cur.focus({ preventScroll: true });
+  }
+  function go(n) {
+    var h = '#step-' + (n + 1);
+    if (location.hash === h) show(n); else location.hash = h; // hashchange shows it, so the browser back button works
+  }
+  window.addEventListener('hashchange', function () {
+    var m = /^#step-(\d)$/.exec(location.hash);
+    show(m ? Number(m[1]) - 1 : 0);
+  });
+
+  next.addEventListener('click', function () {
+    if (!canGo()) return;
+    if (step < screens.length - 1) { go(step + 1); return; }
+    toast.classList.add('show'); clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      toast.classList.remove('show');
+      picks = []; Array.prototype.forEach.call(chipsEl.children, function (c) { c.setAttribute('aria-pressed', 'false'); });
+      go(0);
+    }, 1400);
+  });
+  function goBack() { if (step > 0) go(step - 1); }
+  back.addEventListener('click', goBack);
+  prev.addEventListener('click', goBack);
+
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredPrompt = e; installBtn.hidden = false; });
+  installBtn.addEventListener('click', function () {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function () { deferredPrompt = null; installBtn.hidden = true; });
+  });
+  window.addEventListener('appinstalled', function () { installBtn.hidden = true; });
+
+  var m0 = /^#step-(\d)$/.exec(location.hash);
+  show(m0 ? Number(m0[1]) - 1 : 0);
+})();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
+</script>
+</body>
+</html>
